@@ -35,6 +35,7 @@ func main() {
 		Layout: "layout",
 	}))
 
+	m.Get("/", FirstPage)
 	m.Post("/login", PostLogin)
 	m.Get("/articles", ShowArticles)
 	m.Get("/create", NewArticle)
@@ -43,8 +44,21 @@ func main() {
 	m.Run()
 }
 
-func PostLogin(req *http.Request, db sql.DB) {
+func FirstPage(ren render.Render) {
+	ren.HTML(200, "login", nil)
+}
 
+func PostLogin(req *http.Request, db *sql.DB) (int, string) {
+	var id string
+
+	username, password := req.FormValue("username"), req.FormValue("password")
+	e := db.QueryRow("SELECT id FROM users WHERE username=$1 AND pwd=$2", username, password).Scan(&id)
+
+	if e != nil {
+		return 401, "Not Authorized"
+	}
+
+	return 200, "User id is: " + id
 }
 
 func NewArticle(ren render.Render) {
