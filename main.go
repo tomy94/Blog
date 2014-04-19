@@ -6,6 +6,7 @@ import (
 	"github.com/martini-contrib/render"
 	"github.com/martini-contrib/sessions"
 	// "github.com/russross/blackfriday"
+	"code.google.com/p/go.crypto/bcrypt"
 	"database/sql"
 	_ "github.com/lib/pq"
 	"net/http"
