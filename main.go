@@ -48,13 +48,34 @@ func main() {
 
 	m.Get("/", ShowArticles)
 	m.Get("/login", Login)
-	m.Get("/logout", LogOut)
 	m.Post("/authorize", PostLogin)
+	m.Get("/logout", LogOut)
+	m.Get("/register", Register)
+	m.Post("/signup", SignUp)
 	m.Get("/articles", ShowArticles)
 	m.Get("/create", RequireLogin, NewArticle)
 	m.Post("/article", CreateArticle)
 
 	m.Run()
+}
+
+func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	passwordr := r.FormValue("passwordR")
+
+	if password == passwordr {
+		hashedPassword, e := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		PanicIf(e)
+
+		_, e = db.Exec("INSERT INTO users (username, pwd) VALUES ($1, $2);", username, hashedPassword)
+
+		http.Redirect(rw, r, "/login", http.StatusFound)
+	}
+}
+
+func Register(ren render.Render) {
+	ren.HTML(200, "register", nil)
 }
 
 func LogOut(s sessions.Session) string {
@@ -80,19 +101,19 @@ func Login(ren render.Render) {
 }
 
 func PostLogin(req *http.Request, db *sql.DB, s sessions.Session, ren render.Render) {
-	var id string
+	var id, pass string
 
 	username, password := req.FormValue("username"), req.FormValue("password")
-	e := db.QueryRow("SELECT id FROM users WHERE username=$1 AND pwd=$2", username, password).Scan(&id)
+	e := db.QueryRow("SELECT id, pwd FROM users WHERE username=$1", username).Scan(&id, &pass)
+	PanicIf(e)
 
-	if e != nil {
-		return
+	if bcrypt.CompareHashAndPassword([]byte(pass), []byte(password)) == nil {
+		//set the userId in the session
+		s.Set("userId", id)
+
+		ren.Redirect("/articles")
 	}
 
-	//set the userId in the session
-	s.Set("userId", id)
-
-	ren.Redirect("/articles")
 }
 
 func NewArticle(ren render.Render) {
