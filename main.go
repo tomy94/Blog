@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
 	"github.com/martini-contrib/sessions"
@@ -10,12 +10,15 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"net/http"
+	"strings"
 )
 
 type Article struct {
+	Id     int
 	Title  string
 	Author string
 	Body   string
+	Bool   bool
 }
 
 type User struct {
@@ -47,6 +50,9 @@ func main() {
 	}))
 
 	m.Get("/", ShowArticles)
+	// m.Get("", RequireLogin, EditArticle)
+
+	m.Get("/edit/:articleId", RequireLogin, EditArticle)
 	m.Get("/login", Login)
 	m.Post("/authorize", PostLogin)
 	m.Get("/logout", LogOut)
@@ -57,6 +63,12 @@ func main() {
 	m.Post("/article", CreateArticle)
 
 	m.Run()
+}
+
+func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+	var idFromUrl, idFromDB string
+	idFromUrl = strings.TrimPrefix(r.URL.Path, "/edit/")
+	db.QueryRow(`SELECT `, ...)
 }
 
 func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -120,10 +132,14 @@ func NewArticle(ren render.Render) {
 	ren.HTML(200, "create-article", nil)
 }
 
-func CreateArticle(ren render.Render, r *http.Request, db *sql.DB) {
+func CreateArticle(ren render.Render, r *http.Request, db *sql.DB, s sessions.Session) {
+	var username string
+	fmt.Print(s.Get("userId"))
+	db.QueryRow(`SELECT username FROM users WHERE id=$1;`, s.Get("userId")).Scan(&username)
+
 	rows, e := db.Query(`INSERT INTO articles (title, author, body) VALUES ($1, $2, $3);`,
 		r.FormValue("title"),
-		r.FormValue("author"),
+		username,
 		r.FormValue("body"))
 	PanicIf(e)
 	defer rows.Close()
@@ -131,17 +147,27 @@ func CreateArticle(ren render.Render, r *http.Request, db *sql.DB) {
 	ren.Redirect("/")
 }
 
-func ShowArticles(ren render.Render, r *http.Request, db *sql.DB) {
-	rows, e := db.Query(`SELECT title, author, body FROM articles;`)
+func ShowArticles(ren render.Render, r *http.Request, db *sql.DB, s sessions.Session) {
+	var username string
+
+	rows, e := db.Query(`SELECT id, title, author, body FROM articles;`)
 	PanicIf(e)
 	defer rows.Close()
+
+	db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&username)
 
 	articles := []Article{}
 
 	for rows.Next() {
 		a := Article{}
-		e := rows.Scan(&a.Title, &a.Author, &a.Body)
+		e := rows.Scan(&a.Id, &a.Title, &a.Author, &a.Body)
 		PanicIf(e)
+
+		if a.Author == username {
+			a.Bool = true
+		} else {
+			a.Bool = false
+		}
 		articles = append(articles, a)
 
 	}

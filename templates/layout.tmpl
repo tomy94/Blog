@@ -1,13 +1,46 @@
 <!DOCTYPE <!DOCTYPE html>
 <html>
+
 <head>
-	<title></title>
-	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" >
-	<link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css" type="text/css" rel="stylesheet">
+    <title></title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
+    <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css" type="text/css" rel="stylesheet">
 </head>
+
 <body>
-	<div class="container">
-		{{ yield }}
-	</div>
+    <header class="navbar navbar-default navbar-fixed-top">
+        <nav class="collapse navbar-collapse" role="navigation">
+            <ul class="nav navbar-nav">
+                <li>
+                    <a href="/articles">All articles</a>
+                </li>
+                <li>
+                    <a href="/create">Create new article</a>
+                </li>
+                <li>
+                    <a href="#">Category</a>
+                </li>
+                <li>
+                    <a href="#">Category</a>
+                </li>
+            </ul>
+
+            <ul class="nav navbar-right navbar-nav">
+        		<li>
+                    <a href="/login">Log In</a>
+                </li>
+                <li>
+                    <a href="/register">Register</a>
+                </li>
+      		</ul>
+      		<p></p>
+        </nav>
+    </header>
+    ::before
+    <br><br>
+    <div class="container">
+        {{ yield }}
+    </div>
 </body>
+
 </html>

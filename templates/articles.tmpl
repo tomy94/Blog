@@ -1,14 +1,17 @@
-<table class="table">
-	<tr>
-		<th>Title</th>
-		<th>Author</th>
-		<th>Text</th>
-	</tr>
 {{ range . }}
-	<tr>
-		<td>{{ .Title }}</td>
-		<td>{{ .Author }}</td>
-		<td>{{ .Body }}</td>
-	</tr>
+	<div class="row">
+		<div class="col-md-10 col-sm-9">
+			<h3>{{ .Title }}</h3>
+			<div class="row">
+				<div class="col-xs-9">
+					<p>Author: {{ .Author }}</p>
+					<p>{{ .Body }}</p>
+				</div>
+				{{ if .Bool }} 
+					<a href="/edit/{{ .Id }}"><button>Full article</button></a>
+				{{else}} {{end}}
+			</div>
+		</div>
+	</div>
+	<hr>
 {{ end }}
-</table>
