@@ -7,11 +7,12 @@
 					<p>Author: {{ .Author }}</p>
 					<p>{{ .Body }}</p>
 				</div>
-				{{ if .Bool }} 
-					<a href="/edit/{{ .Id }}"><button>Full article</button></a>
-				{{else}} {{end}}
 			</div>
+			<a href="/open/{{ .Id }}"><button>Full article</button></a>
 		</div>
 	</div>
 	<hr>
+{{ else }}
+	<br>
+	<h2>No articles.. <a href="/create">Click here to create</a></h2>
 {{ end }}

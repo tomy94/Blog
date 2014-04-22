@@ -10,15 +10,27 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 type Article struct {
-	Id     int
-	Title  string
-	Author string
-	Body   string
-	Bool   bool
+	Id           int
+	Title        string
+	Author       string
+	Body         string
+	IsAuthor     bool
+	CommentCount int
+	Comments     []Comment
+	User
+}
+
+type Comment struct {
+	Id        int
+	Author    string
+	Body      string
+	ArticleId int
+	IsAuthor  bool
 }
 
 type User struct {
@@ -52,7 +64,11 @@ func main() {
 	m.Get("/", ShowArticles)
 	// m.Get("", RequireLogin, EditArticle)
 
-	m.Get("/edit/:articleId", RequireLogin, EditArticle)
+	m.Post("/postComment/:articleId", PostComment)
+	m.Post("/edit/:articleId", RequireLogin, EditArticle)
+	m.Post("/save/:articleId", RequireLogin, SaveArticle)
+	m.Post("/delete/:articleId", RequireLogin, DeleteArticle)
+	m.Get("/open/:articleId", OpenArticle)
 	m.Get("/login", Login)
 	m.Post("/authorize", PostLogin)
 	m.Get("/logout", LogOut)
@@ -60,15 +76,92 @@ func main() {
 	m.Post("/signup", SignUp)
 	m.Get("/articles", ShowArticles)
 	m.Get("/create", RequireLogin, NewArticle)
-	m.Post("/article", CreateArticle)
+	m.Post("/article", RequireLogin, CreateArticle)
 
 	m.Run()
 }
 
-func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
-	var idFromUrl, idFromDB string
-	idFromUrl = strings.TrimPrefix(r.URL.Path, "/edit/")
-	db.QueryRow(`SELECT `, ...)
+func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session) {
+	comment := Comment{}
+	db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&comment.Author)
+	comment.Body = r.FormValue("comment")
+	comment.ArticleId, _ = strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/postComment/"))
+
+	if comment.Author == "" {
+		comment.Author = "Guest"
+	}
+
+	_, e := db.Exec(`INSERT INTO comments (author, body, article) VALUES ($1, $2, $3);`, comment.Author, comment.Body, comment.ArticleId)
+	PanicIf(e)
+
+	redirectPath := "/open/" + strconv.Itoa(comment.ArticleId)
+	http.Redirect(rw, r, redirectPath, http.StatusFound)
+}
+
+func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render) {
+	a := Article{}
+
+	idFromUrl := strings.TrimPrefix(r.URL.Path, "/edit/")
+	db.QueryRow(`SELECT title, body FROM articles WHERE id=$1;`, idFromUrl).Scan(&a.Title, &a.Body)
+	a.Id, _ = strconv.Atoi(idFromUrl)
+	ren.HTML(200, "edit-article", a)
+}
+
+func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+	idFromUrl := strings.TrimPrefix(r.URL.Path, "/delete/")
+	_, e := db.Exec(`DELETE FROM articles WHERE id=$1;`, idFromUrl)
+	fmt.Println(e)
+	PanicIf(e)
+	http.Redirect(rw, r, "/articles", http.StatusFound)
+}
+
+func SaveArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+	a := Article{}
+	idFromUrl := strings.TrimPrefix(r.URL.Path, "/save/")
+	a.Title = r.FormValue("title")
+	a.Body = r.FormValue("body")
+	a.Id, _ = strconv.Atoi(idFromUrl)
+
+	_, e := db.Exec(`UPDATE articles SET title = $1, body = $2 WHERE id = $3;`, a.Title, a.Body, a.Id)
+	PanicIf(e)
+	http.Redirect(rw, r, "/articles", http.StatusFound)
+}
+
+func OpenArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render, s sessions.Session) {
+	var a Article
+
+	username := getUserById(s, db)
+
+	idFromUrl := strings.TrimPrefix(r.URL.Path, "/open/")
+	db.QueryRow(`SELECT title, author, body FROM articles WHERE id=$1`, idFromUrl).Scan(&a.Title, &a.Author, &a.Body)
+
+	rows, e := db.Query(`SELECT * FROM comments WHERE article=$1 ORDER BY id DESC;`, idFromUrl)
+	PanicIf(e)
+	defer rows.Close()
+
+	for rows.Next() {
+		c := Comment{}
+		e := rows.Scan(&c.Id, &c.Author, &c.Body, &c.ArticleId)
+		PanicIf(e)
+		a.Comments = append(a.Comments, c)
+
+		if c.Author == username {
+			c.IsAuthor = true
+		} else {
+			c.IsAuthor = false
+		}
+	}
+
+	a.Id, _ = strconv.Atoi(idFromUrl)
+
+	if a.Author == username {
+		a.IsAuthor = true
+	} else {
+		a.IsAuthor = false
+	}
+
+	ren.HTML(200, "showarticle", a)
+
 }
 
 func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -80,7 +173,7 @@ func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
 		hashedPassword, e := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		PanicIf(e)
 
-		_, e = db.Exec("INSERT INTO users (username, pwd) VALUES ($1, $2);", username, hashedPassword)
+		_, e = db.Exec(`INSERT INTO users (username, pwd) VALUES ($1, $2);`, username, hashedPassword)
 
 		http.Redirect(rw, r, "/login", http.StatusFound)
 	}
@@ -90,17 +183,16 @@ func Register(ren render.Render) {
 	ren.HTML(200, "register", nil)
 }
 
-func LogOut(s sessions.Session) string {
+func LogOut(rw http.ResponseWriter, r *http.Request, s sessions.Session) {
 	s.Delete("userId")
-	return "logged out"
+	http.Redirect(rw, r, "/login", http.StatusFound)
 }
 
-func RequireLogin(rw http.ResponseWriter, req *http.Request, s sessions.Session, db *sql.DB, c martini.Context) {
-
+func RequireLogin(rw http.ResponseWriter, r *http.Request, s sessions.Session, db *sql.DB, c martini.Context) {
 	user := &User{}
 	e := db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&user.Username)
 	if e != nil {
-		http.Redirect(rw, req, "/login", http.StatusFound)
+		http.Redirect(rw, r, "/login", http.StatusFound)
 		return
 	}
 
@@ -134,23 +226,27 @@ func NewArticle(ren render.Render) {
 
 func CreateArticle(ren render.Render, r *http.Request, db *sql.DB, s sessions.Session) {
 	var username string
-	fmt.Print(s.Get("userId"))
 	db.QueryRow(`SELECT username FROM users WHERE id=$1;`, s.Get("userId")).Scan(&username)
 
-	rows, e := db.Query(`INSERT INTO articles (title, author, body) VALUES ($1, $2, $3);`,
+	_, e := db.Exec(`INSERT INTO articles (title, author, body) VALUES ($1, $2, $3);`,
 		r.FormValue("title"),
 		username,
 		r.FormValue("body"))
 	PanicIf(e)
-	defer rows.Close()
 
 	ren.Redirect("/")
+}
+
+func getUserById(s sessions.Session, db *sql.DB) string {
+	var username string
+	db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&username)
+	return username
 }
 
 func ShowArticles(ren render.Render, r *http.Request, db *sql.DB, s sessions.Session) {
 	var username string
 
-	rows, e := db.Query(`SELECT id, title, author, body FROM articles;`)
+	rows, e := db.Query(`SELECT id, title, author, body FROM articles ORDER BY id DESC;`)
 	PanicIf(e)
 	defer rows.Close()
 
@@ -163,13 +259,15 @@ func ShowArticles(ren render.Render, r *http.Request, db *sql.DB, s sessions.Ses
 		e := rows.Scan(&a.Id, &a.Title, &a.Author, &a.Body)
 		PanicIf(e)
 
-		if a.Author == username {
-			a.Bool = true
-		} else {
-			a.Bool = false
-		}
-		articles = append(articles, a)
+		temp := strings.SplitAfterN(a.Body, " ", 31)
+		a.Body = ""
 
+		for i := 0; i < len(temp)-1; i++ {
+			a.Body += temp[i]
+		}
+		a.Body += "..."
+
+		articles = append(articles, a)
 	}
 
 	ren.HTML(200, "articles", articles)

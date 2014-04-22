@@ -1,0 +1,41 @@
+<div class="row">
+	<div class="col-md-10 col-sm-9">
+		<br><br>
+		{{ if .IsAuthor }}
+			<form action="/edit/{{ .Id }}" method="post">
+				<input type="submit" value="Edit">
+			</form>
+			<form action="/delete/{{ .Id }}" method="post">
+				<input type="submit" value="Delete">
+			</form>
+		{{else}}
+		{{end}}
+		<h2>{{ .Title }}</h2>
+		<div class="row">
+			<div class="col-xs-9">
+				<p>Author: {{ .Author }}</p>
+				<p>{{ .Body }}</p>
+			</div>
+		</div>
+	</div>
+</div>
+<hr>
+	<form action="/postComment/{{ .Id }}" method="POST">
+		<div class="form-group">
+			<label>Your comment here:</label><br>
+			<textarea type="text" class="form-control" style="max-width:40%;height:10%;" name="comment"></textarea><br>
+			<input type="submit" class="button" />
+		</div>	
+	</form>
+<hr>
+{{ range .Comments }}
+<div class="row">
+	<div class="row">
+		<h4>Author: {{ .Author }}</h4>
+	</div>
+		<p>{{ .Body }}</p>
+	<hr>
+</div>
+{{ else }}
+<p>No comments</p>
+{{ end }}
