@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
 	"github.com/martini-contrib/sessions"
@@ -78,7 +78,8 @@ func main() {
 	m.Get("/create", RequireLogin, NewArticle)
 	m.Post("/article", RequireLogin, CreateArticle)
 
-	m.Run()
+	http.ListenAndServe(":3000", m)
+	// m.Run()
 }
 
 func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session) {
@@ -110,7 +111,8 @@ func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render
 func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/delete/")
 	_, e := db.Exec(`DELETE FROM articles WHERE id=$1;`, idFromUrl)
-	fmt.Println(e)
+	PanicIf(e)
+	_, e = db.Exec(`DELETE FROM comments WHERE article=$1;`, idFromUrl)
 	PanicIf(e)
 	http.Redirect(rw, r, "/articles", http.StatusFound)
 }
