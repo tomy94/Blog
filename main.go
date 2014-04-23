@@ -86,7 +86,8 @@ func main() {
 	m.Get("/create", RequireLogin, NewArticle)
 	m.Post("/article", RequireLogin, CreateArticle)
 
-	m.Run()
+	http.ListenAndServe(":3000", m)
+	// m.Run()
 }
 
 func DeleteComment(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -158,6 +159,9 @@ func OpenArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/open/")
 	db.QueryRow(`SELECT title, author, body FROM articles WHERE id=$1`, idFromUrl).Scan(&a.Title, &a.Author, &a.Body)
 
+	if a.Author == "" {
+		http.Redirect(rw, r, "/articles", http.StatusFound)
+	}
 	rows, e := db.Query(`SELECT * FROM comments WHERE article=$1 ORDER BY id DESC;`, idFromUrl)
 	PanicIf(e)
 	defer rows.Close()
@@ -222,6 +226,7 @@ func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Rend
 func Register(ren render.Render) {
 	if err != (ErrorMsg{}) {
 		ren.HTML(200, "register", err)
+		err.Message = ""
 	} else {
 		ren.HTML(200, "register", nil)
 	}
@@ -246,18 +251,17 @@ func RequireLogin(rw http.ResponseWriter, r *http.Request, s sessions.Session, d
 func Login(ren render.Render) {
 	if err != (ErrorMsg{}) {
 		ren.HTML(200, "login", err)
+		err.Message = ""
 	} else {
 		ren.HTML(200, "login", nil)
 	}
 }
 
-func PostLogin(req *http.Request, db *sql.DB, s sessions.Session, ren render.Render) {
+func PostLogin(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session, ren render.Render) {
 	var id, pass string
 
-	username, password := req.FormValue("username"), req.FormValue("password")
+	username, password := r.FormValue("username"), r.FormValue("password")
 	e := db.QueryRow("SELECT id, pwd FROM users WHERE username=$1", username).Scan(&id, &pass)
-	PanicIf(e)
-
 	if e == nil {
 		if bcrypt.CompareHashAndPassword([]byte(pass), []byte(password)) == nil {
 			//set the userId in the session
@@ -266,9 +270,11 @@ func PostLogin(req *http.Request, db *sql.DB, s sessions.Session, ren render.Ren
 			ren.Redirect("/articles")
 		} else {
 			err.Message = "Wrong password!"
+			http.Redirect(rw, r, "/login", http.StatusFound)
 		}
 	} else {
 		err.Message = "There is no such user!"
+		http.Redirect(rw, r, "/login", http.StatusFound)
 	}
 
 }
