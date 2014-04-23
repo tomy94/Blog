@@ -1,40 +1,42 @@
 <div class="row">
 	<div class="col-md-10 col-sm-9">
-		<br><br>
-		{{ if .IsAuthor }}
-			<form action="/edit/{{ .Id }}" method="post">
-				<input type="submit" value="Edit">
-			</form>
-			<form action="/delete/{{ .Id }}" method="post">
-				<input type="submit" value="Delete">
-			</form>
-		{{else}}
-		{{end}}
 		<h2>{{ .Title }}</h2>
 		<div class="row">
-			<div class="col-xs-9">
+			<div class="col-xs-12">
 				<p>Author: {{ .Author }}</p>
 				<p>{{ .Body }}</p>
 			</div>
 		</div>
 	</div>
 </div>
+{{ if .IsAuthor }}
+	<form style="display:inline-block;float:left;margin-right:20px;" action="/edit/{{ .Id }}" method="post">
+		<input class="btn btn-xs btn-primary" type="submit" value="Edit">
+	</form>
+	<form action="/delete/{{ .Id }}" method="post">
+		<input class="btn btn-xs btn-danger" type="submit" value="Delete">
+	</form>
+{{end}}
 <hr>
 	<form action="/postComment/{{ .Id }}" method="POST">
 		<div class="form-group">
 			<label>Your comment here:</label><br>
 			<textarea type="text" class="form-control" style="max-width:40%;height:10%;" name="comment"></textarea><br>
-			<input type="submit" class="button" />
+			<input class="btn btn-xs btn-primary" type="submit" class="button" value="Send" />
 		</div>	
 	</form>
 <hr>
 {{ range .Comments }}
-<div class="row">
-	<div class="row">
-		<h4>Author: {{ .Author }}</h4>
+<div class="panel panel-default">
+	<div class="panel-heading">
+	Author: {{ .Author }}
+	{{if .IsAuthor}}
+		<a href="/deleteComment/{{.Id}}" style="display:inline-block;float:right;" method="POST">
+			<i class="glyphicon glyphicon-remove"></i>
+		</a>
+	{{end}}
 	</div>
-		<p>{{ .Body }}</p>
-	<hr>
+	<div class="panel-body">{{ .Body }}</div>
 </div>
 {{ else }}
 <p>No comments</p>

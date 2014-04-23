@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
 	"github.com/martini-contrib/sessions"
@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+var err ErrorMsg
+
 type Article struct {
 	Id           int
 	Title        string
@@ -23,6 +25,7 @@ type Article struct {
 	CommentCount int
 	Comments     []Comment
 	User
+	ErrorMsg
 }
 
 type Comment struct {
@@ -35,6 +38,10 @@ type Comment struct {
 
 type User struct {
 	Username string
+}
+
+type ErrorMsg struct {
+	Message string
 }
 
 func PanicIf(e error) {
@@ -64,6 +71,7 @@ func main() {
 	m.Get("/", ShowArticles)
 	// m.Get("", RequireLogin, EditArticle)
 
+	m.Get("/deleteComment/:commentId", RequireLogin, DeleteComment)
 	m.Post("/postComment/:articleId", PostComment)
 	m.Post("/edit/:articleId", RequireLogin, EditArticle)
 	m.Post("/save/:articleId", RequireLogin, SaveArticle)
@@ -78,8 +86,21 @@ func main() {
 	m.Get("/create", RequireLogin, NewArticle)
 	m.Post("/article", RequireLogin, CreateArticle)
 
-	http.ListenAndServe(":3000", m)
-	// m.Run()
+	m.Run()
+}
+
+func DeleteComment(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+	var articleId string
+	idFromUrl := strings.TrimPrefix(r.URL.Path, "/deleteComment/")
+	e := db.QueryRow(`SELECT article FROM comments WHERE id=$1;`, idFromUrl).Scan(&articleId)
+	fmt.Println(idFromUrl)
+	PanicIf(e)
+	_, e = db.Exec(`DELETE FROM comments WHERE id=$1;`, idFromUrl)
+	PanicIf(e)
+
+	redirectUrl := "/open/" + articleId
+	fmt.Println(redirectUrl)
+	http.Redirect(rw, r, redirectUrl, http.StatusFound)
 }
 
 func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session) {
@@ -145,13 +166,13 @@ func OpenArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render
 		c := Comment{}
 		e := rows.Scan(&c.Id, &c.Author, &c.Body, &c.ArticleId)
 		PanicIf(e)
-		a.Comments = append(a.Comments, c)
 
-		if c.Author == username {
+		if username == a.Author {
 			c.IsAuthor = true
 		} else {
 			c.IsAuthor = false
 		}
+		a.Comments = append(a.Comments, c)
 	}
 
 	a.Id, _ = strconv.Atoi(idFromUrl)
@@ -166,23 +187,45 @@ func OpenArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render
 
 }
 
-func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render) {
+	var test string
+	err.Message = ""
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	passwordr := r.FormValue("passwordR")
 
-	if password == passwordr {
-		hashedPassword, e := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		PanicIf(e)
+	e := db.QueryRow(`SELECT username FROM users WHERE username=$1`, username).Scan(&test)
+	fmt.Println(test)
 
-		_, e = db.Exec(`INSERT INTO users (username, pwd) VALUES ($1, $2);`, username, hashedPassword)
+	if e != nil {
+		if password == passwordr {
+			fmt.Println("hashing password...")
+			hashedPassword, e := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			PanicIf(e)
 
-		http.Redirect(rw, r, "/login", http.StatusFound)
+			_, e = db.Exec(`INSERT INTO users (username, pwd) VALUES ($1, $2);`, username, hashedPassword)
+
+			http.Redirect(rw, r, "/login", http.StatusFound)
+		} else {
+			err.Message = "Passwords do not match!"
+			fmt.Println(err.Message)
+			http.Redirect(rw, r, "/register", http.StatusFound)
+		}
+	} else {
+		err.Message = "This username has already been taken!"
+		fmt.Println(err.Message)
+		http.Redirect(rw, r, "/register", http.StatusFound)
 	}
+
 }
 
 func Register(ren render.Render) {
-	ren.HTML(200, "register", nil)
+	if err != (ErrorMsg{}) {
+		ren.HTML(200, "register", err)
+	} else {
+		ren.HTML(200, "register", nil)
+	}
+
 }
 
 func LogOut(rw http.ResponseWriter, r *http.Request, s sessions.Session) {

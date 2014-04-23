@@ -1,0 +1,19 @@
+﻿Blogs:
+
++ Ieraksta pievienošana: Virsraksts, Teksts, Autors
++ Datu glabāšana iekš datubāzes
+- Blogam jābūt pieejamam ievadot Tavu IP (ne tikai uz localhost)
+- Kalendārs: jābūt lapā mazam kalendāram, kur nospiežot uz datuma, atverās tās dienas ieraksti
+		kalendāra paraugs: http://cdn0.tnwcdn.com/wp-content/blogs.dir/1/files/2013/08/aCalendar.jpg
+		obligāti jābūt dienas dalījumiem: Pirmdiena, Otrdiena utt
+- Jābūt iespējai ierakstus šķirstīt pa lapām (lapā 10 ieraksti)
+/ Jābūt iespējai pievienot komentārus pie ieraksta
+		komentārus jāvar šķirstīt pa lapām (lapā 5 ieraksti)
+		komentārus var pievienot gan reģistrēts lietotājs, gan viesis
+		dzēst komentārus var - bloga ieraksta autors
++ Jābūt reģistrācijas formai (lietotāji reģistrējas, lai pievienotu bloga ierakstus)
++ Jābūt iespējai Autorizēties lapā (bez autorizācijas pievienot ierakstus nevar)
++ Ieraksta autoram jāvar pašam dzēst bloga ierakstus, ko viņš ir pievienojis
+
+
+Termiņš līdz - 25.04.2014

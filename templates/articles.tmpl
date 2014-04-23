@@ -1,17 +1,20 @@
-{{ range . }}
-	<div class="row">
-		<div class="col-md-10 col-sm-9">
-			<h3>{{ .Title }}</h3>
-			<div class="row">
-				<div class="col-xs-9">
-					<p>Author: {{ .Author }}</p>
-					<p>{{ .Body }}</p>
+{{ if .}}
+	{{ range . }}
+		<div class="row">
+			<div class="col-md-10 col-sm-9">
+				<h3>{{ .Title }}</h3>
+				<div class="row">
+					<div class="col-xs-9">
+						<p>Author: {{ .Author }}</p>
+						<p>{{ .Body }}</p>
+					</div>
 				</div>
+				<a href="/open/{{ .Id }}" class="btn btn-xs btn-primary">Full article</a>
 			</div>
-			<a href="/open/{{ .Id }}"><button>Full article</button></a>
 		</div>
-	</div>
-	<hr>
+		<hr>
+	{{end}}	
+	
 {{ else }}
 	<br>
 	<h2>No articles.. <a href="/create">Click here to create</a></h2>
