@@ -203,11 +203,10 @@ func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Rend
 
 	if e != nil {
 		if password == passwordr {
-			fmt.Println("hashing password...")
 			hashedPassword, e := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 			PanicIf(e)
 
-			_, e = db.Exec(`INSERT INTO users (username, pwd) VALUES ($1, $2);`, username, hashedPassword)
+			_, e = db.Exec(`INSERT INTO users (username, pwd) VALUES ($1, $2);`, strings.ToLower(username), hashedPassword)
 
 			http.Redirect(rw, r, "/login", http.StatusFound)
 		} else {
@@ -261,6 +260,7 @@ func PostLogin(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.S
 	var id, pass string
 
 	username, password := r.FormValue("username"), r.FormValue("password")
+	username = strings.ToLower(username)
 	e := db.QueryRow("SELECT id, pwd FROM users WHERE username=$1", username).Scan(&id, &pass)
 	if e == nil {
 		if bcrypt.CompareHashAndPassword([]byte(pass), []byte(password)) == nil {
