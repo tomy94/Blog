@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-var err ErrorMsg
+var err Article
 
 type Article struct {
 	Id           int
@@ -24,7 +24,7 @@ type Article struct {
 	CommentCount int
 	Comments     []Comment
 	User
-	ErrorMsg
+	Message string
 }
 
 type Comment struct {
@@ -37,10 +37,6 @@ type Comment struct {
 
 type User struct {
 	Username string
-}
-
-type ErrorMsg struct {
-	Message string
 }
 
 func PanicIf(e error) {
@@ -72,7 +68,7 @@ func main() {
 
 	m.Get("/deleteComment/:commentId", RequireLogin, DeleteComment)
 	m.Post("/postComment/:articleId", PostComment)
-	m.Post("/edit/:articleId", EditArticle)
+	m.Any("/edit/:articleId", EditArticle)
 	m.Post("/save/:articleId", RequireLogin, SaveArticle)
 	m.Post("/delete/:articleId", RequireLogin, DeleteArticle)
 	m.Get("/open/:articleId", OpenArticle)
@@ -129,14 +125,14 @@ func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions
 
 func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render, s sessions.Session) {
 	var author string
-	a := Article{}
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/edit/")
 	db.QueryRow(`SELECT author FROM articles WHERE id=$1;`, idFromUrl).Scan(&author)
 	user := getUserById(s, db)
 	if user == author {
-		db.QueryRow(`SELECT title, body FROM articles WHERE id=$1;`, idFromUrl).Scan(&a.Title, &a.Body)
-		a.Id, _ = strconv.Atoi(idFromUrl)
-		ren.HTML(200, "edit-article", a)
+		db.QueryRow(`SELECT title, body FROM articles WHERE id=$1;`, idFromUrl).Scan(&err.Title, &err.Body)
+		err.Id, _ = strconv.Atoi(idFromUrl)
+		ren.HTML(200, "edit-article", err)
+		err = Article{}
 	} else {
 		http.Redirect(rw, r, "/open/"+idFromUrl, http.StatusFound)
 	}
@@ -156,7 +152,6 @@ func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessio
 	} else {
 		http.Redirect(rw, r, "/open/"+idFromUrl, http.StatusFound)
 	}
-
 }
 
 func SaveArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -164,26 +159,44 @@ func SaveArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/save/")
 
 	tempTitle := strings.SplitAfter(r.FormValue("title"), " ")
-	for _, item := range tempTitle {
-		fmt.Println(len(item))
-		if len(item) > 46 {
-			fmt.Println("item:", item)
-			fmt.Println("Do not use so long words! `" + item + "`")
-			err.Message = ("Do not use so long words! `" + item + "`")
-			fmt.Println("/edit/" + idFromUrl)
-			http.Redirect(rw, r, "/edit/"+idFromUrl, http.StatusFound)
-			return
+	if len(tempTitle) < 6 {
+		for _, item := range tempTitle {
+			if len(item) > 46 {
+				err.Message = ("Do not use so long words! `" + item + "`")
+				http.Redirect(rw, r, "/edit/"+idFromUrl, http.StatusFound)
+			} else {
+				a.Title = r.FormValue("title")
+			}
 		}
+	} else {
+		err.Message = ("Don't use more than 5 words in Title.")
+		http.Redirect(rw, r, "/edit/"+idFromUrl, http.StatusFound)
 	}
 
-	r.FormValue("title")
-	a.Title = r.FormValue("title")
-	a.Body = r.FormValue("body")
-	a.Id, _ = strconv.Atoi(idFromUrl)
+	tempBody := strings.SplitAfter(r.FormValue("body"), " ")
 
-	_, e := db.Exec(`UPDATE articles SET title = $1, body = $2 WHERE id = $3;`, a.Title, a.Body, a.Id)
-	PanicIf(e)
-	http.Redirect(rw, r, "/articles", http.StatusFound)
+	for _, item := range tempBody {
+		if len(item) > 46 {
+			err.Message = ("Do not use so long words! `" + item + "`")
+			http.Redirect(rw, r, "/edit/"+idFromUrl, http.StatusFound)
+		} else {
+			a.Body = r.FormValue("body")
+		}
+	}
+	fmt.Println("Title:", a.Title)
+	fmt.Println("Title:", strings.TrimSpace(a.Title))
+	fmt.Println("Body:", strings.TrimSpace(a.Body))
+
+	a.Id, _ = strconv.Atoi(idFromUrl)
+	if strings.TrimSpace(a.Title) != "" && strings.TrimSpace(a.Body) != "" {
+		_, e := db.Exec(`UPDATE articles SET title = $1, body = $2 WHERE id = $3;`, a.Title, a.Body, a.Id)
+		PanicIf(e)
+		http.Redirect(rw, r, "/articles", http.StatusFound)
+	} else {
+		err.Message = ("Something went wrong...")
+		http.Redirect(rw, r, "/edit/"+idFromUrl, http.StatusFound)
+	}
+
 }
 
 func OpenArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render, s sessions.Session) {
@@ -258,7 +271,7 @@ func SignUp(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Rend
 }
 
 func Register(ren render.Render) {
-	if err != (ErrorMsg{}) {
+	if err.Message != "" {
 		ren.HTML(200, "register", err)
 		err.Message = ""
 	} else {
@@ -283,7 +296,7 @@ func RequireLogin(rw http.ResponseWriter, r *http.Request, s sessions.Session, d
 }
 
 func Login(ren render.Render) {
-	if err != (ErrorMsg{}) {
+	if err.Message != ("") {
 		ren.HTML(200, "login", err)
 		err.Message = ""
 	} else {
