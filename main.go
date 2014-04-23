@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"github.com/go-martini/martini"
-	"github.com/martini-contrib/render"
-	"github.com/martini-contrib/sessions"
-	// "github.com/russross/blackfriday"
 	"code.google.com/p/go.crypto/bcrypt"
 	"database/sql"
+	"fmt"
+	"github.com/go-martini/martini"
 	_ "github.com/lib/pq"
+	"github.com/martini-contrib/render"
+	"github.com/martini-contrib/sessions"
 	"net/http"
 	"strconv"
 	"strings"
@@ -106,19 +105,26 @@ func DeleteComment(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session) {
 	comment := Comment{}
-	db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&comment.Author)
-	comment.Body = r.FormValue("comment")
 	comment.ArticleId, _ = strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/postComment/"))
+	comment.Body = r.FormValue("comment")
+	comment.Body = strings.TrimSpace(comment.Body)
+	if comment.Body != "" {
+		comment.Author = getUserById(s, db)
 
-	if comment.Author == "" {
-		comment.Author = "Guest"
+		if comment.Author == "" {
+			comment.Author = "Guest"
+		}
+
+		_, e := db.Exec(`INSERT INTO comments (author, body, article) VALUES ($1, $2, $3);`, comment.Author, comment.Body, comment.ArticleId)
+		PanicIf(e)
+
+		redirectPath := "/open/" + strconv.Itoa(comment.ArticleId)
+		http.Redirect(rw, r, redirectPath, http.StatusFound)
+	} else {
+		redirectPath := "/open/" + strconv.Itoa(comment.ArticleId)
+		http.Redirect(rw, r, redirectPath, http.StatusFound)
 	}
 
-	_, e := db.Exec(`INSERT INTO comments (author, body, article) VALUES ($1, $2, $3);`, comment.Author, comment.Body, comment.ArticleId)
-	PanicIf(e)
-
-	redirectPath := "/open/" + strconv.Itoa(comment.ArticleId)
-	http.Redirect(rw, r, redirectPath, http.StatusFound)
 }
 
 func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render) {
