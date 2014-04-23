@@ -123,11 +123,18 @@ func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions
 
 func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render) {
 	a := Article{}
-
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/edit/")
-	db.QueryRow(`SELECT title, body FROM articles WHERE id=$1;`, idFromUrl).Scan(&a.Title, &a.Body)
-	a.Id, _ = strconv.Atoi(idFromUrl)
-	ren.HTML(200, "edit-article", a)
+	var user, author string
+	db.QueryRow(`SELECT author FROM articles WHERE id=$1`, idFromUrl).Scan(&author)
+
+	if user == author {
+
+		db.QueryRow(`SELECT title, body FROM articles WHERE id=$1;`, idFromUrl).Scan(&a.Title, &a.Body)
+		a.Id, _ = strconv.Atoi(idFromUrl)
+		ren.HTML(200, "edit-article", a)
+	} else {
+		http.Redirect(rw, r, "/open/"+idFromUrl, http.StatusFound)
+	}
 }
 
 func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session) {
@@ -141,6 +148,8 @@ func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessio
 		_, e = db.Exec(`DELETE FROM comments WHERE article=$1;`, idFromUrl)
 		PanicIf(e)
 		http.Redirect(rw, r, "/articles", http.StatusFound)
+	} else {
+		http.Redirect(rw, r, "/open/"+idFromUrl, http.StatusFound)
 	}
 
 }
