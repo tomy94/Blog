@@ -130,13 +130,19 @@ func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render
 	ren.HTML(200, "edit-article", a)
 }
 
-func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
+func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.Session) {
+	var user, author string
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/delete/")
-	_, e := db.Exec(`DELETE FROM articles WHERE id=$1;`, idFromUrl)
-	PanicIf(e)
-	_, e = db.Exec(`DELETE FROM comments WHERE article=$1;`, idFromUrl)
-	PanicIf(e)
-	http.Redirect(rw, r, "/articles", http.StatusFound)
+	user = getUserById(s, db)
+	db.QueryRow(`SELECT author FROM articles WHERE id=$1`, idFromUrl).Scan(&author)
+	if user == author {
+		_, e := db.Exec(`DELETE FROM articles WHERE id=$1;`, idFromUrl)
+		PanicIf(e)
+		_, e = db.Exec(`DELETE FROM comments WHERE article=$1;`, idFromUrl)
+		PanicIf(e)
+		http.Redirect(rw, r, "/articles", http.StatusFound)
+	}
+
 }
 
 func SaveArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
