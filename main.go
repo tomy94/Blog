@@ -225,7 +225,6 @@ func Register(ren render.Render) {
 	} else {
 		ren.HTML(200, "register", nil)
 	}
-
 }
 
 func LogOut(rw http.ResponseWriter, r *http.Request, s sessions.Session) {
@@ -238,7 +237,6 @@ func RequireLogin(rw http.ResponseWriter, r *http.Request, s sessions.Session, d
 	e := db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&user.Username)
 	if e != nil {
 		http.Redirect(rw, r, "/login", http.StatusFound)
-		return
 	}
 
 	//map the user to the context
@@ -246,7 +244,11 @@ func RequireLogin(rw http.ResponseWriter, r *http.Request, s sessions.Session, d
 }
 
 func Login(ren render.Render) {
-	ren.HTML(200, "login", nil)
+	if err != (ErrorMsg{}) {
+		ren.HTML(200, "login", err)
+	} else {
+		ren.HTML(200, "login", nil)
+	}
 }
 
 func PostLogin(req *http.Request, db *sql.DB, s sessions.Session, ren render.Render) {
@@ -256,11 +258,17 @@ func PostLogin(req *http.Request, db *sql.DB, s sessions.Session, ren render.Ren
 	e := db.QueryRow("SELECT id, pwd FROM users WHERE username=$1", username).Scan(&id, &pass)
 	PanicIf(e)
 
-	if bcrypt.CompareHashAndPassword([]byte(pass), []byte(password)) == nil {
-		//set the userId in the session
-		s.Set("userId", id)
+	if e == nil {
+		if bcrypt.CompareHashAndPassword([]byte(pass), []byte(password)) == nil {
+			//set the userId in the session
+			s.Set("userId", id)
 
-		ren.Redirect("/articles")
+			ren.Redirect("/articles")
+		} else {
+			err.Message = "Wrong password!"
+		}
+	} else {
+		err.Message = "There is no such user!"
 	}
 
 }
