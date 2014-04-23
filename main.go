@@ -324,21 +324,16 @@ func getUserById(s sessions.Session, db *sql.DB) string {
 }
 
 func ShowArticles(ren render.Render, r *http.Request, db *sql.DB, s sessions.Session) {
-	var username string
-
 	rows, e := db.Query(`SELECT id, title, author, body FROM articles ORDER BY id DESC;`)
 	PanicIf(e)
 	defer rows.Close()
-
-	db.QueryRow(`SELECT username FROM users WHERE id=$1`, s.Get("userId")).Scan(&username)
-
 	articles := []Article{}
 
 	for rows.Next() {
 		a := Article{}
 		e := rows.Scan(&a.Id, &a.Title, &a.Author, &a.Body)
 		PanicIf(e)
-
+		db.QueryRow(`SELECT COUNT(*) FROM comments WHERE article=$1`, a.Id).Scan(&a.CommentCount)
 		temp := strings.SplitAfterN(a.Body, " ", 31)
 		a.Body = ""
 

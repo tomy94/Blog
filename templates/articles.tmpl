@@ -9,13 +9,13 @@
 						<p>{{ .Body }}</p>
 					</div>
 				</div>
-				<div class="row">
+				<ul class="list-inline text-center">
 					<i class="glyphicon glyphicon-comment"></i>
-				</div>
-				<div class="row">
-					<a href="/open/{{ .Id }}" class="btn btn-xs btn-primary">Full article</a>	
-				</div>
-				
+					{{ .CommentCount }} comments
+				</ul>
+				<ul class="list-inline text-center">
+					<a href="/open/{{ .Id }}" class="btn btn-xs btn-primary">Full article</a>
+				</ul>	
 			</div>
 		</div>
 		<hr>
