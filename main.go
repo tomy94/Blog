@@ -72,7 +72,7 @@ func main() {
 
 	m.Get("/deleteComment/:commentId", RequireLogin, DeleteComment)
 	m.Post("/postComment/:articleId", PostComment)
-	m.Post("/edit/:articleId", RequireLogin, EditArticle)
+	m.Post("/edit/:articleId", EditArticle)
 	m.Post("/save/:articleId", RequireLogin, SaveArticle)
 	m.Post("/delete/:articleId", RequireLogin, DeleteArticle)
 	m.Get("/open/:articleId", OpenArticle)
@@ -127,14 +127,13 @@ func PostComment(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions
 
 }
 
-func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render) {
+func EditArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, ren render.Render, s sessions.Session) {
+	var author string
 	a := Article{}
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/edit/")
-	var user, author string
-	db.QueryRow(`SELECT author FROM articles WHERE id=$1`, idFromUrl).Scan(&author)
-
+	db.QueryRow(`SELECT author FROM articles WHERE id=$1;`, idFromUrl).Scan(&author)
+	user := getUserById(s, db)
 	if user == author {
-
 		db.QueryRow(`SELECT title, body FROM articles WHERE id=$1;`, idFromUrl).Scan(&a.Title, &a.Body)
 		a.Id, _ = strconv.Atoi(idFromUrl)
 		ren.HTML(200, "edit-article", a)
@@ -163,6 +162,21 @@ func DeleteArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessio
 func SaveArticle(rw http.ResponseWriter, r *http.Request, db *sql.DB) {
 	a := Article{}
 	idFromUrl := strings.TrimPrefix(r.URL.Path, "/save/")
+
+	tempTitle := strings.SplitAfter(r.FormValue("title"), " ")
+	for _, item := range tempTitle {
+		fmt.Println(len(item))
+		if len(item) > 46 {
+			fmt.Println("item:", item)
+			fmt.Println("Do not use so long words! `" + item + "`")
+			err.Message = ("Do not use so long words! `" + item + "`")
+			fmt.Println("/edit/" + idFromUrl)
+			http.Redirect(rw, r, "/edit/"+idFromUrl, http.StatusFound)
+			return
+		}
+	}
+
+	r.FormValue("title")
 	a.Title = r.FormValue("title")
 	a.Body = r.FormValue("body")
 	a.Id, _ = strconv.Atoi(idFromUrl)

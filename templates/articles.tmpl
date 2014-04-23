@@ -1,3 +1,7 @@
+    <h1 class="text-center">Test Blog</h1>
+    <h2 class="text-center">Testa blogs.. Testējam, čakarējam, laužam!</h2>
+    <h2 class="text-center">Paldies!</h2>
+    <div class="container">
 {{ if .}}
 	{{ range . }}
 		<div class="row">
@@ -5,7 +9,7 @@
 				<h3>{{ .Title }}</h3>
 				<div class="row">
 					<div class="col-xs-9">
-						<p>Author: {{ .Author }}</p>
+						<p style="word-break: break-all;">Author: {{ .Author }}</p>
 						<p>{{ .Body }}</p>
 					</div>
 				</div>
