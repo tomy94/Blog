@@ -1,3 +1,39 @@
+<div id="loginModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h1 class="text-center">Register</h1>
+        </div>
+        <div class="modal-body">
+            <form class="form col-md-12 center-block" action="/signup" method="POST">
+              <div class="form-group">
+                <input type="text" class="form-control input-lg" placeholder="Username" name="username">
+              </div>
+              <div class="form-group">
+                <input type="password" class="form-control input-lg" placeholder="Password" name="password">
+              </div>
+              <div class="form-group">
+                <input type="password" class="form-control input-lg" placeholder="Repeat password" name="passwordR">
+              </div>
+              <div class="form-group">
+                <button class="btn btn-primary btn-lg btn-block">Register</button>
+                <span class="pull-right"><a href="/login">Log in</a></span>
+              </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+          <div class="col-md-12">
+            {{if .Message}}
+              <br>
+              <p class="label label-warning col-lg-12" style="height:30px;font-size:20px;">{{.Message}}</p>
+            {{end}}
+          </div>  
+        </div>
+    </div>
+  </div>
+</div>
+
+<!--
 <br>
 <div class="panel panel-default">
   <div class="panel-heading"><h2>Register</h2></div>
@@ -23,3 +59,4 @@
   <br>
   <p class="label label-warning">{{.Message}}</p>
 {{end}}
+-->

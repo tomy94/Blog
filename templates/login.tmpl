@@ -1,21 +1,31 @@
-<br>
-<div class="panel panel-default">
-	<div class="panel-heading"><h2>Log in</h2></div>
-	<div class="panel-body">
-		<form action="/authorize" method="POST">
-			<div class="form-group">
-    			<label>Username</label>
-    			<input type="text" class="form-control" name="username"/>
-  			</div>
-  			<div class="form-group">
-   				<label>Password</label>
-    			<input type="password" class="form-control" name="password"/>
-  			</div>
-  			<input type="submit" class="btn btn-xs btn-primary" />
-		</form>
-	</div>
+<div id="loginModal">
+  <div class="modal-dialog">
+	  <div class="modal-content">
+	      <div class="modal-header">
+	          <h1 class="text-center">Login</h1>
+	      </div>
+	      <div class="modal-body">
+	          <form class="form col-md-12 center-block" action="/authorize" method="POST">
+	            <div class="form-group">
+	              <input type="text" class="form-control input-lg" placeholder="Username" name="username">
+	            </div>
+	            <div class="form-group">
+	              <input type="password" class="form-control input-lg" placeholder="Password" name="password">
+	            </div>
+	            <div class="form-group">
+	              <button class="btn btn-primary btn-lg btn-block">Sign In</button>
+	              <span class="pull-right"><a href="/register">Register</a></span>
+	            </div>
+	          </form>
+	      </div>
+	      <div class="modal-footer">
+	          <div class="col-md-12">
+	          	{{if .Message}}
+  					<br>
+  					<p class="label label-warning col-lg-12" style="height:30px;font-size:20px;">{{.Message}}</p>
+				{{end}}
+			  </div>	
+	      </div>
+	  </div>
+  </div>
 </div>
-{{if .Message}}
-  <br>
-  <p class="label label-warning" style="width:100%;">{{.Message}}</p>
-{{end}}
