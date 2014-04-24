@@ -308,6 +308,8 @@ func PostLogin(rw http.ResponseWriter, r *http.Request, db *sql.DB, s sessions.S
 	var id, pass string
 
 	username, password := r.FormValue("username"), r.FormValue("password")
+	ip := r.RemoteAddr
+	fmt.Println(ip)
 	username = strings.ToLower(username)
 	e := db.QueryRow("SELECT id, pwd FROM users WHERE username=$1", username).Scan(&id, &pass)
 	if e == nil {
